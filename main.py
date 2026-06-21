@@ -12,10 +12,11 @@ DICTIONARY_PATH = BASE_DIR / "dictionary.json"
 
 
 def main() -> None:
-    # 載入詞典資料。
+    # 读取词典数据。
     entries = load_dictionary(DICTIONARY_PATH)
 
-    print("古埃及文字 ↔ 繁體中文")
+    print("Ancient Egyptian ↔ Simplified Chinese")
+    print("古埃及文字 ↔ 简体中文")
     print("1 = Auto")
     print("2 = Egyptian → 中文")
     print("3 = 中文 → Egyptian")
