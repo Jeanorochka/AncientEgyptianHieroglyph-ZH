@@ -5,6 +5,9 @@ Ancient Egyptian to Simplified Chinese lexicon and hieroglyph translator. (and v
 
 ## 啟動
 
+<img width="597" height="756" alt="image" src="https://github.com/user-attachments/assets/b78647ae-4013-47f6-8e0f-1bfda4ea08c4" />
+
+
 ```bash
 python gui.py
 ```
