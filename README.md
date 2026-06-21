@@ -1,12 +1,8 @@
-<img width="912" height="542" alt="image" src="https://github.com/user-attachments/assets/b776109a-38d3-49b4-8b64-aac0fbeb626e" /># 古埃及文字 ↔ 繁體中文翻譯器
 Ancient Egyptian to Simplified Chinese lexicon and hieroglyph translator. (and vice versa)
 是一个古埃及文字 // 简体中文词典与象形文字翻译工具，支持 Unicode 埃及象形文字、转写、中文释义、上下文含义和本地 GUI。
 小型本地工具。
 
 ## 啟動
-
-<img width="597" height="756" alt="image" src="https://github.com/user-attachments/assets/b78647ae-4013-47f6-8e0f-1bfda4ea08c4" />
-
 
 ```bash
 python gui.py
