@@ -1,5 +1,6 @@
 # 古埃及文字 ↔ 繁體中文翻譯器
-
+Ancient Egyptian to Simplified Chinese lexicon and hieroglyph translator. (and vice versa)
+是一个古埃及文字 // 简体中文词典与象形文字翻译工具，支持 Unicode 埃及象形文字、转写、中文释义、上下文含义和本地 GUI。
 小型本地工具。
 
 ## 啟動
