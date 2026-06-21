@@ -12,7 +12,7 @@ class DictionaryEntry:
     id: str
     egyptian: str
     transliteration: str
-    zh_Hant: str
+    zh_Hans: str
     pos: str
     note: str
     meanings: list[dict[str, str]] = field(default_factory=list)
@@ -22,8 +22,21 @@ class DictionaryEntry:
     category: str = ""
 
 
+def get_chinese_value(item: dict[str, Any]) -> str:
+    # 优先读取简体中文；兼容旧版繁体中文字段。
+    value = item.get("zh_Hans")
+
+    if value is None:
+        value = item.get("zh_Hant")
+
+    if value is None:
+        value = "未释义"
+
+    return str(value)
+
+
 def load_dictionary(path: Path) -> list[DictionaryEntry]:
-    # 讀取 JSON 詞典檔案，並轉成型別安全的資料結構。
+    # 读取 JSON 词典，并兼容 zh_Hans / zh_Hant 两种字段。
     with path.open("r", encoding="utf-8") as file:
         raw_data: dict[str, Any] = json.load(file)
 
@@ -45,15 +58,15 @@ def load_dictionary(path: Path) -> list[DictionaryEntry]:
             for meaning in raw_meanings:
                 if isinstance(meaning, dict):
                     meanings.append({
-                        "zh_Hant": str(meaning.get("zh_Hant", "")),
+                        "zh_Hans": get_chinese_value(meaning),
                         "context": str(meaning.get("context", "")),
                     })
 
         entry = DictionaryEntry(
             id=str(item["id"]),
-            egyptian=str(item["egyptian"]),
+            egyptian=str(item.get("egyptian", "")),
             transliteration=str(item.get("transliteration", "")),
-            zh_Hant=str(item.get("zh_Hant", "未釋義")),
+            zh_Hans=get_chinese_value(item),
             pos=str(item.get("pos", "")),
             note=str(item.get("note", "")),
             meanings=meanings,
@@ -69,7 +82,7 @@ def load_dictionary(path: Path) -> list[DictionaryEntry]:
 
 
 def is_egyptian_hieroglyph(char: str) -> bool:
-    # 判斷字元是否屬於 Unicode 古埃及文字區段。
+    # Unicode Egyptian Hieroglyphs block.
     if not char:
         return False
 
@@ -78,12 +91,10 @@ def is_egyptian_hieroglyph(char: str) -> bool:
 
 
 def has_egyptian_hieroglyph(text: str) -> bool:
-    # 判斷文字中是否含有至少一個古埃及文字。
     return any(is_egyptian_hieroglyph(char) for char in text)
 
 
 def is_cjk_unified_ideograph(char: str) -> bool:
-    # 判斷是否為常見中日韓漢字區段。
     if not char:
         return False
 
@@ -97,81 +108,89 @@ def is_cjk_unified_ideograph(char: str) -> bool:
 
 
 def has_chinese_char(text: str) -> bool:
-    # 判斷文字中是否含有漢字。
     return any(is_cjk_unified_ideograph(char) for char in text)
 
 
 def detect_translation_direction(text: str) -> Literal["egyptian_to_chinese", "chinese_to_egyptian"]:
-    # 自動判斷翻譯方向：有古埃及字就優先視為古埃及文，否則視為中文。
+    # Если есть хотя бы один египетский глиф — переводим в китайский.
+    # Иначе считаем ввод китайским / обычным текстом и переводим в египетский.
     if has_egyptian_hieroglyph(text):
         return "egyptian_to_chinese"
 
     return "chinese_to_egyptian"
 
 
-def build_egyptian_index(entries: list[DictionaryEntry]) -> dict[str, DictionaryEntry]:
-    # 建立「古埃及文字 → 詞條」索引，方便快速查找。
-    index: dict[str, DictionaryEntry] = {}
+def build_egyptian_index(entries: list[DictionaryEntry]) -> dict[str, list[DictionaryEntry]]:
+    # One Egyptian spelling can have several Chinese meanings.
+    index: dict[str, list[DictionaryEntry]] = {}
 
     for entry in entries:
         if entry.egyptian:
-            index[entry.egyptian] = entry
+            index.setdefault(entry.egyptian, []).append(entry)
 
     return index
 
 
 def build_chinese_index(entries: list[DictionaryEntry]) -> dict[str, DictionaryEntry]:
-    # 建立「繁體中文 → 詞條」索引，用於反向翻譯。
+    # Builds Simplified Chinese -> Egyptian index.
+    # Supports main zh_Hans and meanings[].zh_Hans.
     index: dict[str, DictionaryEntry] = {}
 
     for entry in entries:
         candidates: list[str] = []
 
-        if entry.zh_Hant and entry.zh_Hant != "未釋義":
-            candidates.append(entry.zh_Hant)
+        if entry.zh_Hans and entry.zh_Hans != "未释义":
+            candidates.append(entry.zh_Hans)
 
         for meaning in entry.meanings:
-            zh = meaning.get("zh_Hant", "").strip()
-            if zh and zh != "未釋義":
-                candidates.append(zh)
+            value = meaning.get("zh_Hans", "").strip()
+            if value and value != "未释义":
+                candidates.append(value)
 
         for candidate in candidates:
-            for part in candidate.split("／"):
-                part = part.strip()
-                if part and part not in index:
-                    index[part] = entry
+            candidate = candidate.strip()
 
-            if candidate and candidate not in index:
-                index[candidate] = entry
+            if not candidate:
+                continue
+
+            # Full phrase has priority.
+            index.setdefault(candidate, entry)
+
+            # Split variants like "妈妈／母亲" or "妈妈/母亲".
+            for separator in ("／", "/", "、", ",", "，"):
+                if separator in candidate:
+                    for part in candidate.split(separator):
+                        part = part.strip()
+                        if part:
+                            index.setdefault(part, entry)
 
     return index
 
 
 def is_punctuation(char: str) -> bool:
-    # 判斷是否為常見標點符號。
-    return char in "，。！？；：（）,.!?;:()[]{}「」『』《》"
+    return char in "，。！？；：（）,.!?;:()[]{}「」『』《》、"
 
 
-def display_translation(entry: DictionaryEntry) -> str:
-    # 優先顯示主翻譯；如果有多義，用「／」保留多個可能值。
+def display_translation(entries: list[DictionaryEntry]) -> str:
+    # Several entries can share one Egyptian spelling; show unique values.
     values: list[str] = []
 
-    if entry.zh_Hant and entry.zh_Hant != "未釋義":
-        values.append(entry.zh_Hant)
+    for entry in entries:
+        if entry.zh_Hans and entry.zh_Hans != "未释义" and entry.zh_Hans not in values:
+            values.append(entry.zh_Hans)
 
-    for meaning in entry.meanings:
-        value = meaning.get("zh_Hant", "").strip()
-        if value and value != "未釋義" and value not in values:
-            values.append(value)
+        for meaning in entry.meanings:
+            value = meaning.get("zh_Hans", "").strip()
+            if value and value != "未释义" and value not in values:
+                values.append(value)
 
     if values:
         return "／".join(values)
 
-    return "未釋義"
+    return "未释义"
 
 
 def translate_egyptian_to_chinese(text: str, entries: list[DictionaryEntry]) -> str:
-    # 使用最長匹配法，從古埃及 Unicode 符號翻譯成繁體中文。
     index = build_egyptian_index(entries)
     keys = sorted(index.keys(), key=len, reverse=True)
 
@@ -207,7 +226,6 @@ def translate_egyptian_to_chinese(text: str, entries: list[DictionaryEntry]) -> 
 
 
 def translate_chinese_to_egyptian(text: str, entries: list[DictionaryEntry]) -> str:
-    # 使用最長匹配法，從繁體中文翻譯成古埃及 Unicode 符號。
     index = build_chinese_index(entries)
     keys = sorted(index.keys(), key=len, reverse=True)
 
@@ -243,7 +261,6 @@ def translate_chinese_to_egyptian(text: str, entries: list[DictionaryEntry]) -> 
 
 
 def translate(text: str, entries: list[DictionaryEntry], direction: Direction = "auto") -> str:
-    # 統一翻譯入口：支援自動方向，也支援手動指定方向。
     if not text.strip():
         return ""
 
@@ -262,7 +279,6 @@ def translate(text: str, entries: list[DictionaryEntry], direction: Direction = 
 
 
 def inspect_codepoints(text: str) -> list[str]:
-    # 檢查輸入字元的 Unicode 編碼，確認是否真的是古埃及文字。
     result: list[str] = []
 
     for char in text:
