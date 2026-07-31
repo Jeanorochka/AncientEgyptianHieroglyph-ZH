@@ -10,14 +10,18 @@ from dict import (
 
 BASE_DIR = Path(__file__).resolve().parent
 DICTIONARY_PATH = BASE_DIR / "dictionary.json"
+ICON_PATH = BASE_DIR / "中国.png"  # icon source - "https://www.flaticon.com/ru/free-icons/-" title="китайский флаг иконки">Китайский флаг иконки от verluk - Flaticon"
 
 
 class TranslatorApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("古埃及文字 ↔ 繁體中文")
+        self.root.title("古埃及文字 ↔ 简体中文")
         self.root.geometry("920x520")
         self.root.minsize(760, 420)
+
+        self.icon_image: tk.PhotoImage | None = None
+        self.set_window_icon()
 
         self.entries = load_dictionary(DICTIONARY_PATH)
         self.direction_var = tk.StringVar(value="auto")
@@ -25,6 +29,17 @@ class TranslatorApp:
 
         self.build_ui()
         self.bind_events()
+
+
+    def set_window_icon(self) -> None:
+        if not ICON_PATH.exists():
+            return
+
+        try:
+            self.icon_image = tk.PhotoImage(file=str(ICON_PATH))
+            self.root.iconphoto(True, self.icon_image)
+        except tk.TclError:
+            self.icon_image = None
 
     def build_ui(self) -> None:
         # 極簡介面：左輸入，右輸出。
