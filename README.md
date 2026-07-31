@@ -7,7 +7,7 @@ Ancient Egyptian to Simplified Chinese lexicon and hieroglyph translator. (and v
 ```bash
 python gui.py
 ```
-<img width="912" height="542" alt="image" src="https://github.com/user-attachments/assets/a99fce18-ed38-4769-a5d3-9eb975d9a13d" />
+<img width="914" height="544" alt="image" src="https://github.com/user-attachments/assets/fee5416f-62f0-4e84-a3ee-afa54171f172" />
 
 左邊輸入，右邊自動翻譯。
 
