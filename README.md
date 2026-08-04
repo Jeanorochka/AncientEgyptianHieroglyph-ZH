@@ -1,6 +1,5 @@
 # Ancient Egyptian ↔ Simplified Chinese Translator
-
-Ancient Egyptian to Simplified Chinese lexicon and hieroglyph translator, and vice versa.
+The first open-source bidirectional Ancient Egyptian Hieroglyphs ↔ Simplified Chinese dictionary and translator.
 
 古埃及文字 // 简体中文词典与象形文字翻译工具，支持：
 
